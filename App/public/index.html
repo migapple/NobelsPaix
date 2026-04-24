@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Prix Nobel de la Paix</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Crimson+Pro:wght@300;400;600&display=swap');
+
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #E8C97A;
+    --gold-dim: #7A6030;
+    --ink: #070510;
+    --ink-soft: #0E0C1A;
+    --ink-mid: #1A1628;
+    --text: #EDE8D8;
+    --text-dim: #A09880;
+    --olive: #4A6741;
+    --olive-light: #6B9460;
+    --dove: #8BA0B0;
+  }
+
+  html, body { height:100%; overflow:hidden; background:var(--ink); margin:0; padding:0; }
+
+  #app {
+    position:fixed; top:0; left:0; right:0; bottom:0;
+    display:flex; flex-direction:column;
+    background:var(--ink); overflow:hidden;
+    font-family:'Crimson Pro',Georgia,serif; color:var(--text);
+  }
+
+  .header {
+    padding-top: calc(14px + env(safe-area-inset-top));
+    padding-bottom:0; background:var(--ink); flex-shrink:0;
+    border-bottom:1px solid var(--gold-dim); position:relative; z-index:10;
+  }
+  .header-top { display:flex; align-items:center; justify-content:space-between; padding:0 16px 6px; }
+  .header-title { display:flex; align-items:center; gap:10px; }
+  .dove-icon { font-size:24px; filter:drop-shadow(0 0 6px rgba(201,168,76,0.5)); }
+  .title-text h1 { font-family:'Playfair Display',serif; font-size:17px; font-weight:700; color:var(--gold); margin:0; letter-spacing:0.5px; line-height:1.1; }
+  .title-text p { font-size:11px; color:var(--text-dim); margin:0; letter-spacing:1px; text-transform:uppercase; }
+  .lang-btn { background:none; border:1px solid var(--gold-dim); border-radius:6px; padding:4px 8px; font-size:18px; cursor:pointer; line-height:1; }
+
+  .tabs { display:flex; border-bottom:1px solid var(--gold-dim); background:var(--ink); }
+  .tab { flex:1; background:none; border:none; padding:10px 4px; font-family:'Crimson Pro',serif; font-size:13px; color:var(--text-dim); cursor:pointer; position:relative; }
+  .tab.active { color:var(--gold); }
+  .tab.active::after { content:''; position:absolute; bottom:-1px; left:20%; right:20%; height:2px; background:var(--gold); border-radius:1px; }
+
+  .main { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
+  .section { display:none; }
+  .section.active { display:block; }
+
+  .search-bar { padding:10px 14px 6px; position:sticky; top:0; background:var(--ink); z-index:5; }
+  .search-bar input { width:100%; box-sizing:border-box; background:var(--ink-mid); border:1px solid var(--gold-dim); border-radius:8px; padding:8px 12px; font-family:'Crimson Pro',serif; font-size:15px; color:var(--text); outline:none; }
+  .search-bar input::placeholder { color:var(--text-dim); }
+
+  .decade-filter { display:flex; gap:6px; padding:6px 14px 10px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+  .decade-filter::-webkit-scrollbar { display:none; }
+  .decade-btn { background:var(--ink-mid); border:1px solid var(--gold-dim); border-radius:14px; padding:4px 10px; font-family:'Crimson Pro',serif; font-size:12px; color:var(--text-dim); white-space:nowrap; cursor:pointer; flex-shrink:0; }
+  .decade-btn.active { background:var(--gold-dim); border-color:var(--gold); color:var(--gold-light); }
+
+  /* ── CARTE ── */
+  .laureate-list { padding:0 14px; display:flex; flex-direction:column; gap:10px; }
+
+  .laureate-card {
+    background:var(--ink-soft); border:1px solid #2A2438; border-radius:10px;
+    padding:12px 14px; cursor:pointer; display:flex; align-items:center; gap:12px;
+    transition:border-color 0.2s;
+  }
+  .laureate-card:active { border-color:var(--gold-dim); background:var(--ink-mid); }
+
+  /* Photo vignette dans la carte */
+  .card-photo-wrap {
+    width:48px; height:48px; border-radius:6px; overflow:hidden; flex-shrink:0;
+    background:var(--ink-mid); border:1px solid var(--gold-dim);
+    display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .card-photo-wrap img {
+    width:100%; height:100%; object-fit:cover; object-position:top center;
+    display:none;
+  }
+  .card-photo-wrap img.loaded { display:block; }
+  .card-photo-initials {
+    font-family:'Playfair Display',serif; font-size:14px; font-weight:700;
+    color:var(--gold-dim); text-align:center; line-height:1; padding:2px;
+  }
+  .card-year-badge {
+    position:absolute; bottom:0; left:0; right:0;
+    background:rgba(7,5,16,0.7); font-size:9px; font-family:'Crimson Pro',serif;
+    color:var(--gold-light); text-align:center; padding:2px 0;
+  }
+
+  .card-info { flex:1; min-width:0; }
+  .card-name { font-family:'Playfair Display',serif; font-size:15px; font-weight:700; color:var(--text); margin:0 0 3px; line-height:1.2; }
+  .card-country { font-size:13px; color:var(--text-dim); margin:0 0 4px; }
+  .card-reason { font-size:12px; color:var(--dove); margin:0; font-style:italic; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .card-arrow { color:var(--gold-dim); font-size:16px; flex-shrink:0; }
+
+  /* ── DETAIL ── */
+  .detail-panel {
+    display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+    background:var(--ink); z-index:100; flex-direction:column; overflow:hidden;
+  }
+  .detail-panel.open { display:flex; }
+  .detail-header {
+    padding:calc(14px + env(safe-area-inset-top)) 16px 12px;
+    background:var(--ink); border-bottom:1px solid var(--gold-dim);
+    display:flex; align-items:center; gap:12px; flex-shrink:0;
+  }
+  .back-btn { background:none; border:1px solid var(--gold-dim); border-radius:6px; padding:5px 10px; color:var(--gold); font-size:16px; cursor:pointer; }
+  .detail-header h2 { font-family:'Playfair Display',serif; font-size:16px; font-weight:700; color:var(--gold); margin:0; flex:1; }
+  .detail-body { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 0 calc(20px + env(safe-area-inset-bottom)); }
+
+  /* Photo grande en haut de la fiche */
+  .detail-photo-banner {
+    display:flex; justify-content:center; padding:20px 0 4px;
+    background:transparent;
+  }
+  .detail-photo-banner img {
+    width:140px; height:auto; max-height:200px;
+    object-fit:contain;
+    border-radius:8px; border:2px solid var(--gold-dim);
+    box-shadow:0 4px 20px rgba(0,0,0,0.6);
+    display:none;
+  }
+  .detail-photo-banner img.loaded { display:block; }
+  .detail-photo-fallback {
+    width:140px; height:140px; display:flex; align-items:center; justify-content:center;
+    font-size:48px; color:var(--gold-dim);
+    border-radius:8px; border:2px solid var(--gold-dim);
+  }
+
+  .detail-content { padding:16px 18px; }
+  .detail-year-badge { display:inline-block; background:var(--gold-dim); color:var(--gold-light); font-family:'Playfair Display',serif; font-weight:700; font-size:13px; padding:3px 10px; border-radius:12px; margin-bottom:10px; }
+  .detail-name { font-family:'Playfair Display',serif; font-size:24px; font-weight:700; color:var(--text); margin:0 0 4px; line-height:1.2; }
+  .detail-country { font-size:16px; color:var(--text-dim); margin:0 0 18px; }
+  .detail-divider { height:1px; background:linear-gradient(to right, var(--gold-dim), transparent); margin:16px 0; }
+  .detail-section-title { font-family:'Playfair Display',serif; font-size:13px; font-weight:700; color:var(--gold); letter-spacing:1px; text-transform:uppercase; margin:0 0 8px; }
+  .detail-reason { font-size:16px; color:var(--text); line-height:1.6; margin:0 0 16px; font-style:italic; }
+  .detail-bio { font-size:15px; color:var(--text-dim); line-height:1.7; margin:0; }
+  .detail-tags { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+  .tag { background:var(--ink-mid); border:1px solid var(--gold-dim); border-radius:12px; padding:4px 10px; font-size:12px; color:var(--text-dim); }
+  .olive-tag { background:#1A2E1A; border-color:var(--olive); color:var(--olive-light); }
+
+  /* ── QUIZ ── */
+  .quiz-container { padding:16px 14px; }
+  .quiz-score-bar { background:var(--ink-mid); border:1px solid var(--gold-dim); border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; justify-content:space-between; align-items:center; }
+  .score-label { font-size:12px; color:var(--text-dim); letter-spacing:0.5px; text-transform:uppercase; }
+  .score-value { font-family:'Playfair Display',serif; font-size:22px; font-weight:700; color:var(--gold); }
+  .quiz-card { background:var(--ink-soft); border:1px solid #2A2438; border-radius:12px; padding:18px 16px; }
+
+  /* Photo dans le quiz */
+  .quiz-photo-wrap {
+    width:72px; height:72px; border-radius:8px; overflow:hidden; flex-shrink:0;
+    background:var(--ink-mid); border:1px solid var(--gold-dim); float:right; margin:0 0 10px 12px;
+  }
+  .quiz-photo-wrap img { width:100%; height:100%; object-fit:cover; object-position:center 20%; display:none; }
+  .quiz-photo-wrap img.loaded { display:block; }
+  .quiz-photo-initials { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--gold-dim); }
+
+  .quiz-q-num { font-size:11px; color:var(--text-dim); letter-spacing:1px; text-transform:uppercase; margin:0 0 10px; }
+  .quiz-question { font-family:'Playfair Display',serif; font-size:17px; font-weight:400; font-style:italic; color:var(--text); line-height:1.5; margin:0 0 18px; clear:both; }
+  .quiz-options { display:flex; flex-direction:column; gap:9px; }
+  .quiz-option { background:var(--ink-mid); border:1px solid #2A2438; border-radius:8px; padding:12px 14px; text-align:left; font-family:'Crimson Pro',serif; font-size:15px; color:var(--text); cursor:pointer; }
+  .quiz-option.correct { background:#1A2E1A; border-color:var(--olive); color:var(--olive-light); }
+  .quiz-option.wrong { background:#2A1414; border-color:#7A3030; color:#C07070; }
+  .quiz-feedback { margin-top:14px; padding:12px 14px; background:var(--ink-mid); border-radius:8px; font-size:14px; color:var(--text-dim); line-height:1.5; display:none; }
+  .quiz-feedback.show { display:block; }
+  .quiz-feedback.correct-fb { border-left:3px solid var(--olive); }
+  .quiz-feedback.wrong-fb { border-left:3px solid #7A3030; }
+  .quiz-next-btn { display:none; margin-top:14px; width:100%; background:var(--gold-dim); border:1px solid var(--gold); border-radius:8px; padding:12px; font-family:'Playfair Display',serif; font-size:15px; color:var(--gold-light); cursor:pointer; }
+  .quiz-next-btn.show { display:block; }
+
+  /* ── STATS ── */
+  .stats-container { padding:16px 14px; display:flex; flex-direction:column; gap:14px; }
+  .stat-card { background:var(--ink-soft); border:1px solid #2A2438; border-radius:10px; padding:14px 16px; }
+  .stat-card-title { font-family:'Playfair Display',serif; font-size:13px; font-weight:700; color:var(--gold); letter-spacing:0.5px; margin:0 0 12px; text-transform:uppercase; }
+  .stat-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #1A1628; font-size:14px; }
+  .stat-row:last-child { border-bottom:none; }
+  .stat-row .label { color:var(--text-dim); }
+  .stat-row .value { color:var(--text); font-weight:600; }
+  .stat-bar-row { display:flex; align-items:center; gap:10px; padding:5px 0; font-size:13px; }
+  .stat-bar-label { color:var(--text-dim); min-width:100px; font-size:12px; }
+  .stat-bar-track { flex:1; height:6px; background:var(--ink-mid); border-radius:3px; overflow:hidden; }
+  .stat-bar-fill { height:100%; background:linear-gradient(to right, var(--gold-dim), var(--gold)); border-radius:3px; }
+  .stat-bar-val { color:var(--gold); font-size:12px; min-width:24px; text-align:right; }
+
+  .no-result { text-align:center; padding:40px 20px; color:var(--text-dim); font-size:15px; font-style:italic; }
+  .ornament { color:var(--gold-dim); font-size:28px; display:block; margin-bottom:10px; }
+
+  /* ── APPS ── */
+  .apps-container { padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .apps-section-title {
+    font-family:'Playfair Display',serif; font-size:11px; font-weight:700;
+    color:var(--gold-dim); letter-spacing:1.5px; text-transform:uppercase;
+    padding:10px 4px 6px; margin:0;
+  }
+  .app-row {
+    display:flex; align-items:center; gap:12px;
+    background:var(--ink-soft); border:1px solid #2A2438; border-radius:10px;
+    padding:10px 12px; cursor:pointer; text-decoration:none;
+  }
+  .app-row:active { border-color:var(--gold-dim); background:var(--ink-mid); }
+  .app-icon-wrap {
+    width:52px; height:52px; border-radius:12px; overflow:hidden; flex-shrink:0;
+    background:var(--ink-mid); display:flex; align-items:center; justify-content:center;
+  }
+  .app-icon-wrap img { width:52px; height:52px; border-radius:12px; display:none; }
+  .app-icon-wrap img.loaded { display:block; }
+  .app-icon-placeholder { font-size:22px; }
+  .app-info { flex:1; min-width:0; }
+  .app-name { font-family:'Playfair Display',serif; font-size:15px; font-weight:700; color:var(--text); margin:0 0 2px; }
+  .app-cat { font-size:12px; color:var(--text-dim); margin:0; }
+  .app-arrow { color:var(--gold-dim); font-size:16px; flex-shrink:0; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <div class="header-top">
+      <div class="header-title">
+        <span class="dove-icon">🕊️</span>
+        <div class="title-text">
+          <h1 id="appTitle">Prix Nobel de la Paix</h1>
+          <p id="appSub">1901 – 2024 · Oslo</p>
+        </div>
+      </div>
+      <button class="lang-btn" id="langBtn" onclick="toggleLang()">🇬🇧</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('liste')" id="tab-liste">📜 Liste</button>
+      <button class="tab" onclick="showTab('quiz')" id="tab-quiz">🎯 Quiz</button>
+      <button class="tab" onclick="showTab('stats')" id="tab-stats">📊 Stats</button>
+      <button class="tab" onclick="showTab('apps')" id="tab-apps">📱 Apps</button>
+    </div>
+  </div>
+
+  <div class="main" id="mainScroll">
+    <div class="section active" id="section-liste">
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="Rechercher…" oninput="filterList()">
+      </div>
+      <div class="decade-filter" id="decadeFilter"></div>
+      <div class="laureate-list" id="laureateList"></div>
+    </div>
+    <div class="section" id="section-quiz">
+      <div class="quiz-container" id="quizContainer"></div>
+    </div>
+    <div class="section" id="section-stats">
+      <div class="stats-container" id="statsContainer"></div>
+    </div>
+    <div class="section" id="section-apps">
+      <div class="apps-container" id="appsContainer"></div>
+    </div>
+  </div>
+</div>
+
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-header">
+    <button class="back-btn" onclick="closeDetail()">← <span id="backLabel">Retour</span></button>
+    <h2 id="detailHeaderYear"></h2>
+  </div>
+  <div class="detail-body" id="detailBody"></div>
+</div>
+
+<script>
+// ── WIKIPEDIA PHOTO (JSONP — fonctionne WKWebView + browser) ──────────────
+const IMG_PREFIX = 'nobel_img_v5_';
+const IMG_TTL    = 7 * 24 * 3600 * 1000;
+
+function applyPhoto(imgEl, url) {
+  // Toujours attacher onload AVANT src pour éviter le race condition WKWebView
+  imgEl.onload  = () => imgEl.classList.add('loaded');
+  imgEl.onerror = () => imgEl.classList.remove('loaded');
+  imgEl.src = url;
+  // Si l'image est déjà dans le cache browser (complete=true ET src non vide)
+  if (imgEl.complete && imgEl.naturalWidth > 0) imgEl.classList.add('loaded');
+}
+
+function loadWikiPhoto(wikiTitle, imgEl, lang, directUrl) {
+  if (directUrl) { applyPhoto(imgEl, directUrl); return; }
+  if (!wikiTitle) return;
+  const key = IMG_PREFIX + wikiTitle;
+  try {
+    const cached = localStorage.getItem(key);
+    if (cached) {
+      const { url, ts } = JSON.parse(cached);
+      if (Date.now() - ts < IMG_TTL) {
+        applyPhoto(imgEl, url);
+        return;
+      }
+    }
+  } catch(e) {}
+
+  const cb = 'wkcb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  const script = document.createElement('script');
+  let done = false;
+  const cleanup = () => { clearTimeout(timer); delete window[cb]; if (script.parentNode) script.remove(); };
+  const timer = setTimeout(() => { if (!done) { done=true; cleanup(); } }, 8000);
+
+  window[cb] = (data) => {
+    if (done) return;
+    done = true; cleanup();
+    try {
+      const pages = data.query && data.query.pages;
+      if (!pages) return;
+      const page = Object.values(pages)[0];
+      const url = page.thumbnail && page.thumbnail.source;
+      if (url) {
+        applyPhoto(imgEl, url);
+        try { localStorage.setItem(key, JSON.stringify({ url, ts: Date.now() })); } catch(e) {}
+      }
+    } catch(e) {}
+  };
+  script.onerror = () => { if (!done) { done=true; cleanup(); } };
+  const domain = lang === 'fr' ? 'fr' : 'en';
+  script.src = 'https://' + domain + '.wikipedia.org/w/api.php?action=query'
+             + '&titles=' + encodeURIComponent(wikiTitle)
+             + '&prop=pageimages&pithumbsize=400&format=json&callback=' + cb;
+  document.head.appendChild(script);
+}
+
+// ── DATA ─────────────────────────────────────────────────────────────────
+// wiki_fr : titre article Wikipedia FR (null = utiliser wiki_en)
+// wiki_en : titre article Wikipedia EN
+const DATA = [
+  { y:2024, name:"Nihon Hidankyo", country:"Japon", flag:"🇯🇵",
+    wiki_fr:null, wiki_en:"Nihon Hidankyo", img_url:"https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Hibakusha.jpg/500px-Hibakusha.jpg",
+    reason_fr:"Organisation de survivants des bombes atomiques d'Hiroshima et Nagasaki militante contre les armes nucléaires.", reason_en:"Organisation of atomic bomb survivors from Hiroshima and Nagasaki, campaigning for nuclear abolition.",
+    bio_fr:"Nihon Hidankyo regroupe les hibakusha, survivants des bombardements atomiques de 1945. Pendant des décennies, ils ont témoigné de leurs expériences et plaidé pour un monde sans armes nucléaires.", bio_en:"Nihon Hidankyo represents the hibakusha, survivors of the 1945 atomic bombings. For decades, they have shared their testimonies and advocated for a nuclear-free world.", tags:["Désarmement","Japon","Organisation"], type:"org" },
+  { y:2023, name:"Narges Mohammadi", country:"Iran", flag:"🇮🇷",
+    wiki_fr:"Narges Mohammadi", wiki_en:"Narges Mohammadi",
+    reason_fr:"Combat pour la liberté des femmes en Iran et contre la peine de mort.", reason_en:"Her fight for the freedom of women in Iran and against the death penalty.",
+    bio_fr:"Militante des droits humains iranienne, emprisonnée à plusieurs reprises pour son activisme. Elle incarne le mouvement « Femme, Vie, Liberté ».", bio_en:"Iranian human rights activist, imprisoned multiple times for her activism. She embodies the 'Woman, Life, Freedom' movement.", tags:["Droits humains","Femmes","Iran"] },
+  { y:2022, name:"Ales Bialiatski", country:"Biélorussie", flag:"🇧🇾",
+    wiki_fr:null, wiki_en:"Ales Bialiatski",
+    reason_fr:"Représentant des droits civils en Biélorussie.", reason_en:"Civil rights representative in Belarus.",
+    bio_fr:"Ales Bialiatski est le fondateur de Viasna, organisation bélarusse de défense des droits humains. Avec Memorial et le CSDDHL, il représente la société civile face aux régimes autoritaires.", bio_en:"Ales Bialiatski founded Viasna, a Belarusian human rights organisation, representing civil society against authoritarian regimes.", tags:["Droits humains","Europe de l'Est"] },
+  { y:2021, name:"Maria Ressa", country:"Philippines", flag:"🇵🇭",
+    wiki_fr:"Maria Ressa", wiki_en:"Maria Ressa",
+    reason_fr:"Défenseure de la liberté de la presse et de l'expression.", reason_en:"Defender of freedom of expression and the press.",
+    bio_fr:"Maria Ressa, fondatrice de Rappler aux Philippines, a partagé le prix avec Dmitry Muratov pour leur journalisme courageux.", bio_en:"Maria Ressa, founder of Rappler, shared the prize with Dmitry Muratov for courageous journalism.", tags:["Liberté de la presse","Journalisme"] },
+  { y:2020, name:"Programme alimentaire mondial", country:"International", flag:"🌍",
+    wiki_fr:"Programme alimentaire mondial", wiki_en:"World Food Programme",
+    reason_fr:"Efforts pour combattre la faim, améliorer la sécurité alimentaire et la paix.", reason_en:"Efforts to combat hunger, improve food security and peace.",
+    bio_fr:"Le PAM est la plus grande organisation humanitaire du monde, fournissant de la nourriture à des millions de personnes en situation de crise.", bio_en:"WFP is the world's largest humanitarian organisation, providing food to millions in crisis.", tags:["Humanitaire","Faim","ONU"], type:"org" },
+  { y:2019, name:"Abiy Ahmed Ali", country:"Éthiopie", flag:"🇪🇹",
+    wiki_fr:null, wiki_en:"Abiy Ahmed",
+    reason_fr:"Efforts pour la paix et la réconciliation internationale, résolution du conflit éthiopie-érythrée.", reason_en:"Peace and international reconciliation efforts, resolving the Ethiopia–Eritrea conflict.",
+    bio_fr:"Premier ministre éthiopien, il a conclu un accord de paix historique avec l'Érythrée après vingt ans de conflit.", bio_en:"Ethiopian Prime Minister who reached a historic peace agreement with Eritrea after twenty years of conflict.", tags:["Afrique","Diplomatie","Réconciliation"] },
+  { y:2018, name:"Denis Mukwege", country:"RDC", flag:"🇨🇩",
+    wiki_fr:"Denis Mukwege", wiki_en:"Denis Mukwege",
+    reason_fr:"Efforts pour mettre fin à l'utilisation des violences sexuelles comme arme de guerre.", reason_en:"Efforts to end the use of sexual violence as a weapon of war.",
+    bio_fr:"Denis Mukwege, médecin congolais, soigne les victimes de viols de guerre. Nadia Murad, Yézidie, a survécu à l'esclavage sexuel de Daech et est devenue une voix mondiale.", bio_en:"Congolese doctor Denis Mukwege treats victims of war rape. Nadia Murad, a Yazidi, survived ISIS sexual slavery and became a global voice.", tags:["Droits humains","Femmes","Conflit"] },
+  { y:2017, name:"ICAN", country:"International", flag:"🌍",
+    wiki_fr:"Campagne internationale pour l'abolition des armes nucléaires", wiki_en:"International Campaign to Abolish Nuclear Weapons",
+    reason_fr:"Travaux en faveur d'un traité interdisant les armes nucléaires.", reason_en:"Work for a treaty banning nuclear weapons.",
+    bio_fr:"La Campagne internationale pour l'abolition des armes nucléaires a conduit aux négociations du Traité d'interdiction des armes nucléaires adopté en 2017.", bio_en:"ICAN led negotiations for the Treaty on the Prohibition of Nuclear Weapons adopted in 2017.", tags:["Désarmement","Nucléaire","Organisation"], type:"org" },
+  { y:2016, name:"Juan Manuel Santos", country:"Colombie", flag:"🇨🇴",
+    wiki_fr:"Juan Manuel Santos", wiki_en:"Juan Manuel Santos",
+    reason_fr:"Efforts résolus pour mettre fin au conflit de plus de 50 ans avec les FARC.", reason_en:"Resolute efforts to end the 50+ year-long civil war with FARC.",
+    bio_fr:"Président colombien qui a négocié un accord de paix avec les FARC, mettant fin à un des conflits armés les plus longs d'Amérique latine.", bio_en:"Colombian President who negotiated a peace agreement with FARC, ending one of Latin America's longest armed conflicts.", tags:["Amérique latine","Diplomatie","Conflit"] },
+  { y:2015, name:"Quartet du dialogue national tunisien", country:"Tunisie", flag:"🇹🇳",
+    wiki_fr:"Quartet du dialogue national tunisien", wiki_en:"Tunisian National Dialogue Quartet",
+    reason_fr:"Contribution décisive à la construction d'une démocratie pluraliste en Tunisie.", reason_en:"Decisive contribution to building a pluralistic democracy in Tunisia.",
+    bio_fr:"Regroupant quatre organisations clés de la société civile tunisienne, le Quartet a guidé la transition démocratique après la révolution de 2011.", bio_en:"Comprising four key Tunisian civil society organisations, the Quartet guided the democratic transition after the 2011 revolution.", tags:["Démocratie","Tunisie","Société civile"], type:"org" },
+  { y:2014, name:"Malala Yousafzai", country:"Pakistan", flag:"🇵🇰",
+    wiki_fr:"Malala Yousafzai", wiki_en:"Malala Yousafzai",
+    reason_fr:"Combat contre la répression des enfants et lutte pour le droit à l'éducation.", reason_en:"Struggle against the suppression of children and for the right of all children to education.",
+    bio_fr:"Malala Yousafzai, rescapée des talibans, est devenue le symbole mondial de l'éducation des filles. Elle partage le prix avec Kailash Satyarthi.", bio_en:"Malala Yousafzai, a Taliban survivor, became a global symbol for girls' education, sharing the prize with Kailash Satyarthi.", tags:["Enfants","Éducation","Droits humains"] },
+  { y:2013, name:"OIAC", country:"International", flag:"🌍",
+    wiki_fr:"Organisation pour l'interdiction des armes chimiques", wiki_en:"Organisation for the Prohibition of Chemical Weapons",
+    reason_fr:"Travaux étendus pour l'élimination des armes chimiques.", reason_en:"Extensive efforts to eliminate chemical weapons.",
+    bio_fr:"L'Organisation pour l'interdiction des armes chimiques supervise l'application de la Convention sur les armes chimiques depuis 1997.", bio_en:"The OPCW oversees the implementation of the Chemical Weapons Convention since 1997.", tags:["Désarmement","Organisation","Chimique"], type:"org" },
+  { y:2012, name:"Union européenne", country:"Europe", flag:"🇪🇺",
+    wiki_fr:"Union européenne", wiki_en:"European Union",
+    reason_fr:"Plus de six décennies de contribution à la paix, la réconciliation et la démocratie en Europe.", reason_en:"Over six decades of advancement of peace and reconciliation, democracy and human rights in Europe.",
+    bio_fr:"Fondée sur les ruines de la Seconde Guerre mondiale, l'UE a transformé un continent déchiré par les guerres en un espace de paix et de coopération.", bio_en:"Founded on the ruins of World War II, the EU transformed a war-torn continent into a space of peace and cooperation.", tags:["Europe","Démocratie","Intégration"], type:"org" },
+  { y:2011, name:"Ellen Johnson Sirleaf", country:"Liberia", flag:"🇱🇷",
+    wiki_fr:"Ellen Johnson Sirleaf", wiki_en:"Ellen Johnson Sirleaf",
+    reason_fr:"Lutte non-violente pour la sécurité des femmes et leur participation à la vie publique.", reason_en:"Non-violent struggle for the safety of women and for women's rights to full participation in peace-building.",
+    bio_fr:"Première présidente africaine, Ellen Johnson Sirleaf a conduit la réconciliation nationale au Liberia. Le prix est partagé avec Leymah Gbowee et Tawakkol Karman.", bio_en:"Africa's first female president, Ellen Johnson Sirleaf led national reconciliation in Liberia, sharing the prize with Leymah Gbowee and Tawakkol Karman.", tags:["Femmes","Afrique","Démocratie"] },
+  { y:2010, name:"Liu Xiaobo", country:"Chine", flag:"🇨🇳",
+    wiki_fr:null, wiki_en:"Liu Xiaobo",
+    reason_fr:"Long combat non-violent pour les droits fondamentaux en Chine.", reason_en:"Long and non-violent struggle for fundamental human rights in China.",
+    bio_fr:"Écrivain et militant des droits humains emprisonné par le gouvernement chinois au moment de la remise du prix. Auteur de la Charte 08.", bio_en:"Writer and human rights activist imprisoned by the Chinese government at the time of the award. Author of Charter 08.", tags:["Droits humains","Chine","Liberté d'expression"] },
+  { y:2009, name:"Barack Obama", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Barack Obama", wiki_en:"Barack Obama",
+    reason_fr:"Efforts extraordinaires pour renforcer la diplomatie internationale et la coopération entre les peuples.", reason_en:"Extraordinary efforts to strengthen international diplomacy and cooperation between peoples.",
+    bio_fr:"44e président des États-Unis, Barack Obama a reçu le prix peu après son élection, en reconnaissance de sa vision d'un multilatéralisme renouvelé.", bio_en:"44th US President, Barack Obama received the prize shortly after his election, recognising his vision of renewed multilateralism.", tags:["Diplomatie","États-Unis","Multilatéralisme"] },
+  { y:2008, name:"Martti Ahtisaari", country:"Finlande", flag:"🇫🇮",
+    wiki_fr:"Martti Ahtisaari", wiki_en:"Martti Ahtisaari",
+    reason_fr:"Efforts importants pour résoudre des conflits internationaux sur plusieurs continents.", reason_en:"Important efforts to resolve international conflicts on several continents.",
+    bio_fr:"Ancien président finlandais et médiateur international, il a contribué à la résolution de conflits en Namibie, au Kosovo et en Indonésie.", bio_en:"Former Finnish president and international mediator, he contributed to resolving conflicts in Namibia, Kosovo, and Indonesia.", tags:["Diplomatie","Médiation","Europe"] },
+  { y:2007, name:"Al Gore", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Al Gore", wiki_en:"Al Gore",
+    reason_fr:"Efforts pour construire et diffuser une plus grande connaissance sur les changements climatiques.", reason_en:"Efforts to build up and disseminate knowledge about man-made climate change.",
+    bio_fr:"Ancien vice-président américain, Al Gore a popularisé l'urgence climatique via le film « Une vérité qui dérange ». Il partage le prix avec le GIEC.", bio_en:"Former US Vice-President, Al Gore popularised climate urgency through 'An Inconvenient Truth', sharing the prize with the IPCC.", tags:["Climat","Environnement","États-Unis"] },
+  { y:2006, name:"Muhammad Yunus", country:"Bangladesh", flag:"🇧🇩",
+    wiki_fr:"Muhammad Yunus", wiki_en:"Muhammad Yunus",
+    reason_fr:"Efforts pour créer le développement économique et social par le bas.", reason_en:"Efforts to create economic and social development from below.",
+    bio_fr:"Économiste bangladais, Yunus a inventé le microcrédit et fondé la Grameen Bank pour sortir des millions de femmes pauvres de la pauvreté.", bio_en:"Bangladeshi economist, Yunus invented microcredit and founded Grameen Bank to lift millions of poor women out of poverty.", tags:["Économie","Développement","Bangladesh"] },
+  { y:2005, name:"Mohamed ElBaradei", country:"Égypte", flag:"🇪🇬",
+    wiki_fr:null, wiki_en:"Mohamed ElBaradei",
+    reason_fr:"Efforts pour empêcher la prolifération nucléaire et son utilisation à des fins militaires.", reason_en:"Efforts to prevent nuclear energy from being used for military purposes.",
+    bio_fr:"Directeur général de l'AIEA, Mohamed ElBaradei a partagé le prix avec l'Agence pour leurs efforts en matière de non-prolifération nucléaire.", bio_en:"IAEA Director-General Mohamed ElBaradei shared the prize with the Agency for nuclear non-proliferation efforts.", tags:["Nucléaire","ONU","Désarmement"] },
+  { y:2004, name:"Wangari Maathai", country:"Kenya", flag:"🇰🇪",
+    wiki_fr:null, wiki_en:"Wangari Maathai", img_url:"https://upload.wikimedia.org/wikipedia/commons/a/a6/Wangari_Matthai_2001_%28cropped%29.jpg",
+    reason_fr:"Contribution au développement durable, à la démocratie et à la paix.", reason_en:"Contribution to sustainable development, democracy and peace.",
+    bio_fr:"Fondatrice du Mouvement de la Ceinture verte au Kenya, première femme africaine à recevoir le Nobel, elle a planté des millions d'arbres.", bio_en:"Founder of the Green Belt Movement in Kenya, first African woman to receive the Nobel, she planted millions of trees.", tags:["Environnement","Afrique","Femmes"] },
+  { y:2003, name:"Shirin Ebadi", country:"Iran", flag:"🇮🇷",
+    wiki_fr:"Shirin Ebadi", wiki_en:"Shirin Ebadi",
+    reason_fr:"Efforts pour la démocratie et les droits humains en Iran.", reason_en:"Efforts for democracy and human rights in Iran.",
+    bio_fr:"Première femme iranienne juge, puis avocate des droits humains après la révolution islamique, elle milite pour une interprétation démocratique de l'islam.", bio_en:"Iran's first female judge, then a human rights lawyer after the Islamic revolution.", tags:["Droits humains","Femmes","Iran"] },
+  { y:2002, name:"Jimmy Carter", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Jimmy Carter", wiki_en:"Jimmy Carter",
+    reason_fr:"Décennies d'efforts infatigables pour trouver des solutions pacifiques aux conflits internationaux.", reason_en:"Decades of untiring effort to find peaceful solutions to international conflicts.",
+    bio_fr:"39e président des États-Unis, il a négocié les accords de Camp David et continue son action humanitaire à travers le Centre Carter.", bio_en:"39th US President, he negotiated the Camp David Accords and continued humanitarian work through the Carter Center.", tags:["Diplomatie","États-Unis","Médiation"] },
+  { y:2001, name:"Kofi Annan", country:"Ghana / ONU", flag:"🌍",
+    wiki_fr:"Kofi Annan", wiki_en:"Kofi Annan",
+    reason_fr:"Travail pour un monde mieux organisé et plus pacifique.", reason_en:"Work for a better organized and more peaceful world.",
+    bio_fr:"Secrétaire général de l'ONU, Kofi Annan et les Nations unies ont reçu le prix pour leurs efforts en matière de sécurité internationale et de droits humains.", bio_en:"UN Secretary-General Kofi Annan and the United Nations received the prize for efforts on international security and human rights.", tags:["ONU","Multilatéralisme","Droits humains"] },
+  { y:2000, name:"Kim Dae-jung", country:"Corée du Sud", flag:"🇰🇷",
+    wiki_fr:"Kim Dae-jung", wiki_en:"Kim Dae-jung",
+    reason_fr:"Travaux pour la démocratie et les droits humains et pour la paix inter-coréenne.", reason_en:"Work for democracy and human rights and for inter-Korean peace.",
+    bio_fr:"Président de la Corée du Sud, il a promu la politique « Sunshine » envers la Corée du Nord et initié le premier sommet inter-coréen.", bio_en:"South Korean president, he promoted the 'Sunshine Policy' towards North Korea and initiated the first inter-Korean summit.", tags:["Asie","Démocratie","Diplomatie"] },
+  { y:1999, name:"Médecins Sans Frontières", country:"International", flag:"🌍",
+    wiki_fr:"Médecins Sans Frontières", wiki_en:"Médecins Sans Frontières",
+    reason_fr:"Action humanitaire pionnière sur plusieurs continents.", reason_en:"Pioneering humanitarian work on several continents.",
+    bio_fr:"Fondée en 1971 par des médecins français, MSF intervient dans les crises humanitaires du monde entier.", bio_en:"Founded in 1971 by French doctors, MSF intervenes in humanitarian crises worldwide.", tags:["Humanitaire","Médecine","Organisation"], type:"org" },
+  { y:1998, name:"John Hume", country:"Irlande du Nord", flag:"🇬🇧",
+    wiki_fr:null, wiki_en:"John Hume",
+    reason_fr:"Efforts pour une solution pacifique au conflit nord-irlandais.", reason_en:"Efforts to find a peaceful solution to the conflict in Northern Ireland.",
+    bio_fr:"John Hume et David Trimble ont conduit les négociations menant aux Accords du Vendredi saint, mettant fin à des décennies de violence.", bio_en:"John Hume and David Trimble conducted negotiations leading to the Good Friday Agreement.", tags:["Europe","Médiation","Accord de paix"] },
+  { y:1997, name:"Jody Williams", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Jody Williams", wiki_en:"Jody Williams",
+    reason_fr:"Travaux pour l'interdiction et l'élimination des mines antipersonnel.", reason_en:"Work for the banning and clearing of anti-personnel mines.",
+    bio_fr:"Coordinatrice de la Campagne internationale pour l'interdiction des mines terrestres, elle a conduit à la signature du Traité d'Ottawa en 1997.", bio_en:"Coordinator of ICBL, she led to the signing of the Ottawa Treaty in 1997.", tags:["Désarmement","Organisation","États-Unis"] },
+  { y:1996, name:"José Ramos-Horta", country:"Timor-Leste", flag:"🇹🇱",
+    wiki_fr:"José Ramos-Horta", wiki_en:"José Ramos-Horta",
+    reason_fr:"Travaux pour une solution juste et pacifique au conflit au Timor Oriental.", reason_en:"Work towards a just and peaceful solution to the conflict in East Timor.",
+    bio_fr:"José Ramos-Horta et l'évêque Belo ont défendu les droits du peuple timorais sous occupation indonésienne.", bio_en:"José Ramos-Horta and Bishop Belo defended the rights of the Timorese people under Indonesian occupation.", tags:["Asie","Droits humains","Indépendance"] },
+  { y:1995, name:"Joseph Rotblat", country:"Royaume-Uni", flag:"🇬🇧",
+    wiki_fr:null, wiki_en:"Joseph Rotblat",
+    reason_fr:"Efforts pour réduire le rôle des armes nucléaires dans la politique internationale.", reason_en:"Efforts to diminish the part played by nuclear arms in international politics.",
+    bio_fr:"Physicien polonais-britannique qui quitta le projet Manhattan et fonda avec Russell les conférences Pugwash pour l'abolition des armes nucléaires.", bio_en:"Polish-British physicist who left the Manhattan Project and co-founded with Russell the Pugwash Conferences.", tags:["Nucléaire","Science","Désarmement"] },
+  { y:1994, name:"Yitzhak Rabin", country:"Israël", flag:"🇮🇱",
+    wiki_fr:"Yitzhak Rabin", wiki_en:"Yitzhak Rabin",
+    reason_fr:"Efforts pour créer la paix au Moyen-Orient (accords d'Oslo).", reason_en:"Efforts to create peace in the Middle East (Oslo Accords).",
+    bio_fr:"Les accords d'Oslo de 1993 entre l'OLP et Israël ont conduit à cette attribution conjointe avec Peres et Arafat.", bio_en:"The 1993 Oslo Accords led to this joint award with Peres and Arafat.", tags:["Moyen-Orient","Diplomatie","Accord de paix"] },
+  { y:1993, name:"Nelson Mandela", country:"Afrique du Sud", flag:"🇿🇦",
+    wiki_fr:"Nelson Mandela", wiki_en:"Nelson Mandela",
+    reason_fr:"Élimination pacifique du régime d'apartheid et fondation d'une Afrique du Sud démocratique.", reason_en:"Peaceful termination of the apartheid regime and laying the foundations for a new democratic South Africa.",
+    bio_fr:"Nelson Mandela, libéré après 27 ans de prison, et le président F.W. de Klerk ont mis fin à l'apartheid et conduit l'Afrique du Sud vers la démocratie.", bio_en:"Nelson Mandela, freed after 27 years in prison, and President de Klerk jointly ended apartheid.", tags:["Afrique","Démocratie","Réconciliation"] },
+  { y:1992, name:"Rigoberta Menchú Tum", country:"Guatemala", flag:"🇬🇹",
+    wiki_fr:"Rigoberta Menchú", wiki_en:"Rigoberta Menchú",
+    reason_fr:"Travaux pour la justice sociale et la réconciliation ethno-culturelle.", reason_en:"Work for social justice and ethno-cultural reconciliation.",
+    bio_fr:"Militante maya guatémaltèque qui a dénoncé les violences contre les populations indigènes pendant la guerre civile guatémaltèque.", bio_en:"Guatemalan Mayan activist who denounced violence against indigenous populations during the Guatemalan civil war.", tags:["Amérique latine","Peuples autochtones","Droits humains"] },
+  { y:1991, name:"Aung San Suu Kyi", country:"Myanmar", flag:"🇲🇲",
+    wiki_fr:"Aung San Suu Kyi", wiki_en:"Aung San Suu Kyi",
+    reason_fr:"Lutte non-violente pour la démocratie et les droits humains en Birmanie.", reason_en:"Non-violent struggle for democracy and human rights in Burma.",
+    bio_fr:"Militante pro-démocratie birmane assignée à résidence pendant des années. Son image a été ternie par son silence face aux persécutions de la minorité Rohingya.", bio_en:"Burmese pro-democracy activist under house arrest for years, later tarnished by silence over Rohingya persecution.", tags:["Asie","Démocratie","Droits humains"] },
+  { y:1990, name:"Mikhaïl Gorbatchev", country:"URSS", flag:"🇷🇺",
+    wiki_fr:"Mikhaïl Gorbatchev", wiki_en:"Mikhail Gorbachev",
+    reason_fr:"Rôle de premier plan dans le processus de paix de la Guerre froide.", reason_en:"Leading role in the peace process that ended the Cold War.",
+    bio_fr:"Dernier dirigeant soviétique, il a mis fin à la Guerre froide avec la glasnost et la perestroïka, permettant la chute du mur de Berlin.", bio_en:"Last Soviet leader, he ended the Cold War with glasnost and perestroika, enabling the fall of the Berlin Wall.", tags:["Guerre froide","Diplomatie","Europe"] },
+  { y:1989, name:"Dalaï Lama (Tenzin Gyatso)", country:"Tibet", flag:"🏔️",
+    wiki_fr:"Tenzin Gyatso", wiki_en:"Dalai Lama",
+    reason_fr:"Lutte pour la libération du Tibet et opposition à la violence.", reason_en:"Struggle for the liberation of Tibet and opposition to violence.",
+    bio_fr:"Chef spirituel des bouddhistes tibétains depuis 1950, il préconise une approche non-violente pour l'autonomie du Tibet.", bio_en:"Spiritual leader of Tibetan Buddhists since 1950, advocating non-violent approach for Tibetan autonomy.", tags:["Asie","Religion","Non-violence"] },
+  { y:1988, name:"Forces de maintien de la paix ONU", country:"International", flag:"🌍",
+    wiki_fr:"Opérations de maintien de la paix des Nations unies", wiki_en:"United Nations peacekeeping",
+    reason_fr:"Contribution aux conditions préalables à la négociation et à la mise en œuvre des accords de paix.", reason_en:"Contribution to creating the preconditions for peace negotiations.",
+    bio_fr:"Les Casques bleus de l'ONU, déployés dans des conflits du monde entier, ont reçu le prix pour leur rôle de stabilisation.", bio_en:"UN Peacekeeping Forces received the prize for their stabilising role in global crisis zones.", tags:["ONU","Maintien de la paix","Organisation"], type:"org" },
+  { y:1987, name:"Oscar Arias Sánchez", country:"Costa Rica", flag:"🇨🇷",
+    wiki_fr:"Óscar Arias Sánchez", wiki_en:"Óscar Arias",
+    reason_fr:"Travaux pour la paix en Amérique centrale — plan de paix Arias.", reason_en:"Work for peace in Central America — the Arias Peace Plan.",
+    bio_fr:"Président du Costa Rica qui a élaboré le plan de paix centraméricain de 1987, contribuant à mettre fin aux guerres civiles.", bio_en:"Costa Rican president who developed the 1987 Central American peace plan, helping end civil wars.", tags:["Amérique latine","Diplomatie","Accord de paix"] },
+  { y:1986, name:"Elie Wiesel", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:null, wiki_en:"Elie Wiesel",
+    reason_fr:"Messager de paix, d'expiation et de dignité humaine.", reason_en:"Messenger of peace, atonement and human dignity.",
+    bio_fr:"Survivant de la Shoah, écrivain et humaniste, auteur de « La Nuit ». Sa vie fut consacrée à ne jamais oublier.", bio_en:"Holocaust survivor, writer and humanist, author of 'Night', devoted his life to never forgetting.", tags:["Holocauste","Mémoire","Droits humains"] },
+  { y:1984, name:"Desmond Tutu", country:"Afrique du Sud", flag:"🇿🇦",
+    wiki_fr:"Desmond Tutu", wiki_en:"Desmond Tutu",
+    reason_fr:"Rôle en tant que leader dans la campagne non-violente contre l'apartheid.", reason_en:"His role as a unifying leader in the non-violent campaign against apartheid.",
+    bio_fr:"Archevêque anglican de Cape Town, figure centrale de la lutte contre l'apartheid, il a présidé la Commission Vérité et Réconciliation.", bio_en:"Anglican Archbishop of Cape Town, central figure in the struggle against apartheid, he chaired the Truth and Reconciliation Commission.", tags:["Afrique","Religion","Non-violence"] },
+  { y:1983, name:"Lech Wałęsa", country:"Pologne", flag:"🇵🇱",
+    wiki_fr:"Lech Wałęsa", wiki_en:"Lech Wałęsa",
+    reason_fr:"Défenseur du droit des travailleurs et de la liberté.", reason_en:"Champion of workers' rights and freedom.",
+    bio_fr:"Électricien des chantiers navals de Gdańsk, il a fondé Solidarność, premier syndicat libre d'Europe de l'Est.", bio_en:"Gdańsk shipyard electrician who founded Solidarity, Eastern Europe's first free trade union.", tags:["Europe","Droits des travailleurs","Démocratie"] },
+  { y:1980, name:"Adolfo Pérez Esquivel", country:"Argentine", flag:"🇦🇷",
+    wiki_fr:"Adolfo Pérez Esquivel", wiki_en:"Adolfo Pérez Esquivel",
+    reason_fr:"Défenseur des droits humains en Amérique latine.", reason_en:"Champion of human rights in Latin America.",
+    bio_fr:"Sculpteur et militant chrétien argentin, il a coordonné les organisations de défense des droits humains sous les dictatures militaires.", bio_en:"Argentine sculptor and Christian activist who coordinated human rights organisations under Latin American military dictatorships.", tags:["Amérique latine","Droits humains","Non-violence"] },
+  { y:1979, name:"Mère Teresa", country:"Inde", flag:"🇮🇳",
+    wiki_fr:"Mère Teresa", wiki_en:"Mother Teresa",
+    reason_fr:"Lutte pour vaincre la pauvreté et la détresse qui constituent aussi une menace pour la paix.", reason_en:"Work in bringing help to suffering humanity.",
+    bio_fr:"Religieuse catholique fondant les Missionnaires de la Charité à Calcutta, consacrant sa vie aux plus pauvres.", bio_en:"Catholic nun who founded the Missionaries of Charity in Calcutta, devoting her life to the poorest.", tags:["Humanitaire","Religion","Pauvreté"] },
+  { y:1978, name:"Anouar el-Sadate", country:"Égypte", flag:"🇪🇬",
+    wiki_fr:"Anouar el-Sadate", wiki_en:"Anwar Sadat",
+    reason_fr:"Contribution aux accords de paix israélo-égyptiens (accords de Camp David).", reason_en:"Contribution to the Camp David Accords.",
+    bio_fr:"Le président égyptien Sadate et le Premier ministre israélien Begin ont signé les accords de Camp David en 1978, première paix entre Israël et un pays arabe.", bio_en:"Egyptian President Sadat and Israeli PM Begin signed the Camp David Accords in 1978, the first Arab-Israeli peace.", tags:["Moyen-Orient","Accord de paix","Diplomatie"] },
+  { y:1977, name:"Amnesty International", country:"International", flag:"🌍",
+    wiki_fr:"Amnesty International", wiki_en:"Amnesty International",
+    reason_fr:"Protection des droits humains fondamentaux.", reason_en:"Protection of fundamental human rights.",
+    bio_fr:"Fondée en 1961 par Peter Benenson, Amnesty International est la plus grande ONG de défense des droits humains.", bio_en:"Founded in 1961 by Peter Benenson, Amnesty International is the largest human rights NGO.", tags:["Droits humains","Organisation","Prisonniers"], type:"org" },
+  { y:1975, name:"Andreï Sakharov", country:"URSS", flag:"🇷🇺",
+    wiki_fr:"Andreï Sakharov", wiki_en:"Andrei Sakharov",
+    reason_fr:"Lutte pour la paix entre les hommes et contre l'arbitraire et l'abus de pouvoir.", reason_en:"Struggle for peace among men and against the misuse of power.",
+    bio_fr:"Physicien soviétique, père de la bombe H soviétique, devenu ardent défenseur des droits civils et du désarmement nucléaire.", bio_en:"Soviet physicist, father of the Soviet H-bomb, who became an ardent defender of civil rights and nuclear disarmament.", tags:["Droits humains","Nucléaire","URSS"] },
+  { y:1971, name:"Willy Brandt", country:"Allemagne", flag:"🇩🇪",
+    wiki_fr:"Willy Brandt", wiki_en:"Willy Brandt",
+    reason_fr:"Politique de rapprochement avec les pays d'Europe de l'Est (Ostpolitik).", reason_en:"Policy of rapprochement with Eastern Europe (Ostpolitik).",
+    bio_fr:"Chancelier ouest-allemand qui a initié l'Ostpolitik, s'agenouillant à Varsovie devant le mémorial du ghetto.", bio_en:"West German Chancellor who initiated Ostpolitik, kneeling in Warsaw before the Ghetto memorial.", tags:["Europe","Diplomatie","Guerre froide"] },
+  { y:1970, name:"Norman Borlaug", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Norman Borlaug", wiki_en:"Norman Borlaug",
+    reason_fr:"Contribution à la révolution verte qui a sauvé des millions de personnes de la famine.", reason_en:"Contribution to the green revolution that saved millions from starvation.",
+    bio_fr:"Agronome américain dont les travaux sur les variétés de blé à haut rendement ont déclenché la Révolution verte.", bio_en:"American agronomist whose work on high-yield wheat varieties triggered the Green Revolution.", tags:["Agriculture","Faim","Science"] },
+  { y:1964, name:"Martin Luther King Jr.", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Martin Luther King", wiki_en:"Martin Luther King Jr.",
+    reason_fr:"Lutte non-violente pour l'égalité civique et la paix.", reason_en:"Non-violent struggle for civil rights and peace.",
+    bio_fr:"Leader du mouvement des droits civiques américain, auteur du discours « I Have a Dream ».", bio_en:"Leader of the American civil rights movement, he delivered the 'I Have a Dream' speech.", tags:["États-Unis","Droits civiques","Non-violence"] },
+  { y:1962, name:"Linus Pauling", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Linus Pauling", wiki_en:"Linus Pauling",
+    reason_fr:"Campagne contre les essais nucléaires en temps de paix.", reason_en:"Campaign against nuclear testing in peacetime.",
+    bio_fr:"Unique personne à avoir reçu deux Nobel non partagés (Chimie 1954, Paix 1962).", bio_en:"Unique person to have received two unshared Nobel Prizes (Chemistry 1954, Peace 1962).", tags:["Désarmement","Science","États-Unis"] },
+  { y:1961, name:"Dag Hammarskjöld", country:"Suède", flag:"🇸🇪",
+    wiki_fr:"Dag Hammarskjöld", wiki_en:"Dag Hammarskjöld",
+    reason_fr:"À titre posthume, pour sa contribution au renforcement de l'ONU.", reason_en:"Posthumously, for strengthening the UN organisation.",
+    bio_fr:"Secrétaire général de l'ONU décédé dans un accident d'avion au Congo en 1961 — seul prix posthume de l'histoire Nobel.", bio_en:"UN Secretary-General who died in a plane crash in the Congo in 1961 — the only posthumous Nobel award.", tags:["ONU","Suède","Posthume"] },
+  { y:1960, name:"Albert Lutuli", country:"Afrique du Sud", flag:"🇿🇦",
+    wiki_fr:null, wiki_en:"Albert Luthuli",
+    reason_fr:"Résistance non-violente à l'apartheid.", reason_en:"Non-violent resistance to apartheid.",
+    bio_fr:"Chef zoulou et président de l'ANC, premier Africain à recevoir le Nobel de la Paix.", bio_en:"Zulu chief and ANC president, first African to receive the Nobel Peace Prize.", tags:["Afrique","Non-violence","Apartheid"] },
+  { y:1957, name:"Lester B. Pearson", country:"Canada", flag:"🇨🇦",
+    wiki_fr:"Lester B. Pearson", wiki_en:"Lester B. Pearson",
+    reason_fr:"Rôle dans la résolution de la crise de Suez et création des premières forces de maintien de la paix de l'ONU.", reason_en:"Role in resolving the Suez Crisis and creating the first UN peacekeeping force.",
+    bio_fr:"Ministre des Affaires étrangères canadien qui a proposé la création des Casques bleus lors de la crise de Suez.", bio_en:"Canadian Foreign Affairs Minister who proposed the creation of UN peacekeeping forces during the Suez Crisis.", tags:["Canada","ONU","Maintien de la paix"] },
+  { y:1953, name:"George Marshall", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"George Marshall", wiki_en:"George Marshall", img_url:"https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Army_Chief_of_Staff_General_George_C._Marshall_official_Portrait_%28cropped%29%28b%29.jpg/500px-Army_Chief_of_Staff_General_George_C._Marshall_official_Portrait_%28cropped%29%28b%29.jpg",
+    reason_fr:"Plan Marshall pour la reconstruction de l'Europe après la Seconde Guerre mondiale.", reason_en:"Marshall Plan for the reconstruction of Europe after WWII.",
+    bio_fr:"Général et secrétaire d'État américain, auteur du Plan Marshall pour la reconstruction économique de l'Europe occidentale.", bio_en:"American general and Secretary of State, author of the Marshall Plan for Europe's reconstruction.", tags:["États-Unis","Europe","Reconstruction"] },
+  { y:1952, name:"Albert Schweitzer", country:"France / Gabon", flag:"🇫🇷",
+    wiki_fr:"Albert Schweitzer", wiki_en:"Albert Schweitzer",
+    reason_fr:"Humanisme et aide aux peuples dans la misère.", reason_en:"Humanitarianism and help to suffering peoples.",
+    bio_fr:"Médecin, théologien et musicien alsacien, fondateur d'un hôpital à Lambaréné au Gabon.", bio_en:"Alsatian doctor, theologian and musician, founder of a hospital in Lambaréné, Gabon.", tags:["Humanitaire","Médecine","Afrique"] },
+  { y:1950, name:"Ralph Bunche", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Ralph Bunche", wiki_en:"Ralph Bunche",
+    reason_fr:"Médiation dans le conflit arabo-israélien de 1948.", reason_en:"Mediation in the Arab–Israeli conflict of 1948.",
+    bio_fr:"Diplomate américain et premier Afro-Américain à recevoir le Nobel de la Paix, il a négocié les armistices de 1948.", bio_en:"American diplomat and first African American to receive the Nobel Peace Prize, negotiating the 1948 armistices.", tags:["Moyen-Orient","Médiation","États-Unis"] },
+  { y:1945, name:"Cordell Hull", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Cordell Hull", wiki_en:"Cordell Hull",
+    reason_fr:"Initiative dans la création des Nations unies.", reason_en:"Initiative in creating the United Nations.",
+    bio_fr:"Secrétaire d'État américain le plus longtemps en poste, architecte principal de la création des Nations unies.", bio_en:"Longest-serving US Secretary of State, principal architect of the United Nations.", tags:["États-Unis","ONU","Diplomatie"] },
+  { y:1935, name:"Carl von Ossietzky", country:"Allemagne", flag:"🇩🇪",
+    wiki_fr:"Carl von Ossietzky", wiki_en:"Carl von Ossietzky",
+    reason_fr:"Exposé le réarmement secret de l'Allemagne nazie.", reason_en:"Exposed the secret rearmament of Nazi Germany.",
+    bio_fr:"Journaliste et pacifiste allemand emprisonné dans un camp de concentration nazi au moment du prix.", bio_en:"German journalist and pacifist held in a Nazi concentration camp when the prize was awarded.", tags:["Journalisme","Europe","Courage"] },
+  { y:1931, name:"Jane Addams", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Jane Addams", wiki_en:"Jane Addams",
+    reason_fr:"Travaux de paix internationale.", reason_en:"International peace efforts.",
+    bio_fr:"Pionnière du travail social et fondatrice de Hull House, première Américaine à recevoir le Nobel de la Paix.", bio_en:"Pioneer of social work and founder of Hull House, first American woman to receive the Nobel Peace Prize.", tags:["États-Unis","Féminisme","Éducation"] },
+  { y:1926, name:"Aristide Briand", country:"France", flag:"🇫🇷",
+    wiki_fr:"Aristide Briand", wiki_en:"Aristide Briand",
+    reason_fr:"Traités de Locarno pour la réconciliation franco-allemande.", reason_en:"Locarno Treaties for Franco-German reconciliation.",
+    bio_fr:"Ministre français qui a signé les Accords de Locarno en 1925 avec le chancelier allemand Stresemann.", bio_en:"French Minister who signed the Locarno Accords in 1925 with German Chancellor Stresemann.", tags:["Europe","Diplomatie","Réconciliation"] },
+  { y:1922, name:"Fridtjof Nansen", country:"Norvège", flag:"🇳🇴",
+    wiki_fr:"Fridtjof Nansen", wiki_en:"Fridtjof Nansen",
+    reason_fr:"Travaux humanitaires pour les prisonniers de guerre et les réfugiés.", reason_en:"Humanitarian work for war prisoners and refugees.",
+    bio_fr:"Explorateur polaire et diplomate norvégien, créateur du « passeport Nansen » pour les réfugiés apatrides.", bio_en:"Norwegian polar explorer and diplomat, creator of the 'Nansen passport' for stateless refugees.", tags:["Humanitaire","Réfugiés","Norvège"] },
+  { y:1919, name:"Woodrow Wilson", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Woodrow Wilson", wiki_en:"Woodrow Wilson",
+    reason_fr:"Fondation de la Société des Nations.", reason_en:"Founding of the League of Nations.",
+    bio_fr:"28e président des États-Unis, architecte des 14 points de Wilson et promoteur de la Société des Nations.", bio_en:"28th US President, architect of Wilson's 14 Points and promoter of the League of Nations.", tags:["États-Unis","Diplomatie","ONU"] },
+  { y:1906, name:"Theodore Roosevelt", country:"États-Unis", flag:"🇺🇸",
+    wiki_fr:"Theodore Roosevelt", wiki_en:"Theodore Roosevelt",
+    reason_fr:"Médiation de la paix de Portsmouth mettant fin à la guerre russo-japonaise.", reason_en:"Mediation of the Treaty of Portsmouth ending the Russo-Japanese War.",
+    bio_fr:"26e président des États-Unis, il a négocié le traité de Portsmouth en 1905 mettant fin à la guerre russo-japonaise.", bio_en:"26th US President, he negotiated the 1905 Treaty of Portsmouth ending the Russo-Japanese War.", tags:["États-Unis","Diplomatie","Médiation"] },
+  { y:1905, name:"Bertha von Suttner", country:"Autriche", flag:"🇦🇹",
+    wiki_fr:"Bertha von Suttner", wiki_en:"Bertha von Suttner",
+    reason_fr:"Auteure de « Bas les armes ! » et pionnière du mouvement pour la paix.", reason_en:"Author of 'Lay Down Your Arms' and pioneer of the peace movement.",
+    bio_fr:"Première femme à recevoir le Nobel de la Paix, son roman pacifiste a influencé Alfred Nobel lui-même.", bio_en:"First woman to receive the Nobel Peace Prize, her pacifist novel influenced Alfred Nobel himself.", tags:["Europe","Féminisme","Pacifisme"] },
+  { y:1902, name:"Élie Ducommun", country:"Suisse", flag:"🇨🇭",
+    wiki_fr:"Élie Ducommun", wiki_en:"Élie Ducommun",
+    reason_fr:"Direction du Bureau international permanent de la paix à Berne.", reason_en:"Direction of the International Peace Bureau in Berne.",
+    bio_fr:"Élie Ducommun et Charles Gobat ont dirigé le Bureau international permanent de la paix à Berne.", bio_en:"Élie Ducommun and Charles Gobat led the International Peace Bureau in Berne.", tags:["Suisse","Pacifisme","Organisation"] },
+  { y:1901, name:"Henry Dunant", country:"Suisse", flag:"🇨🇭",
+    wiki_fr:"Henry Dunant", wiki_en:"Henry Dunant",
+    reason_fr:"Fondateur de la Croix-Rouge et premier lauréat du Nobel de la Paix.", reason_en:"Founder of the Red Cross and first Nobel Peace Prize laureate.",
+    bio_fr:"Henry Dunant a fondé la Croix-Rouge après la bataille de Solférino. Frédéric Passy a fondé la première société française de paix.", bio_en:"Henry Dunant founded the Red Cross after Solferino. Frédéric Passy founded the first French peace society.", tags:["Suisse","Humanitaire","Pionniers"] },
+];
+
+DATA.sort((a,b) => b.y - a.y);
+
+// ── ÉTAT ──
+let lang = 'fr';
+let activeDecade = 'all';
+let searchQ = '';
+let quizState = { q:0, score:0, answered:false, total:15 };
+let shuffledQuiz = [], quizQuestions = [];
+
+// ── HELPER : choisir le titre wiki selon la langue ──
+function getWikiTitle(d) {
+  if (lang === 'fr') return d.wiki_fr || d.wiki_en;
+  return d.wiki_en || d.wiki_fr;
+}
+
+// ── LANG ──
+function toggleLang() {
+  lang = lang === 'fr' ? 'en' : 'fr';
+  document.getElementById('langBtn').textContent = lang === 'fr' ? '🇬🇧' : '🇫🇷';
+  document.getElementById('appTitle').textContent = lang === 'fr' ? 'Prix Nobel de la Paix' : 'Nobel Peace Prize';
+  updateTabLabels(); filterList(); renderStats();
+}
+function updateTabLabels() {
+  if (lang==='fr') {
+    document.getElementById('tab-liste').textContent='📜 Liste';
+    document.getElementById('tab-quiz').textContent='🎯 Quiz';
+    document.getElementById('tab-stats').textContent='📊 Stats';
+    document.getElementById('searchInput').placeholder='Rechercher…';
+    document.getElementById('backLabel').textContent='Retour';
+  } else {
+    document.getElementById('tab-liste').textContent='📜 List';
+    document.getElementById('tab-quiz').textContent='🎯 Quiz';
+    document.getElementById('tab-stats').textContent='📊 Stats';
+    document.getElementById('searchInput').placeholder='Search…';
+    document.getElementById('backLabel').textContent='Back';
+  }
+}
+
+// ── TABS ──
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  document.getElementById('mainScroll').scrollTop=0;
+  if (name==='quiz') renderQuiz();
+  if (name==='stats') renderStats();
+  if (name==='apps') renderApps();
+}
+
+// ── DECADE FILTER ──
+function buildDecadeFilter() {
+  const decades=['all','2020','2010','2000','1990','1980','1970','1960','1950','1940','1900'];
+  const L=lang==='fr'
+    ?{all:'Tous','2020':'2020s','2010':'2010s','2000':'2000s','1990':'1990s','1980':'1980s','1970':'1970s','1960':'1960s','1950':'1950s','1940':'1940s','1900':'Avant 1940'}
+    :{all:'All','2020':'2020s','2010':'2010s','2000':'2000s','1990':'1990s','1980':'1980s','1970':'1970s','1960':'1960s','1950':'1950s','1940':'1940s','1900':'Pre-1940'};
+  document.getElementById('decadeFilter').innerHTML=decades.map(d=>`<button class="decade-btn ${d===activeDecade?'active':''}" onclick="setDecade('${d}')">${L[d]}</button>`).join('');
+}
+function setDecade(d) { activeDecade=d; buildDecadeFilter(); filterList(); }
+
+// ── LISTE ──
+function filterList() {
+  buildDecadeFilter();
+  const q=(document.getElementById('searchInput').value||'').toLowerCase();
+  let items=DATA.filter(d=>{
+    const ms=!q||d.name.toLowerCase().includes(q)||d.country.toLowerCase().includes(q)||d[`reason_${lang}`].toLowerCase().includes(q)||String(d.y).includes(q);
+    let md=activeDecade==='all';
+    if (!md){const dec=parseInt(activeDecade);md=dec===1900?d.y<1940:d.y>=dec&&d.y<dec+10;}
+    return ms&&md;
+  });
+  const list=document.getElementById('laureateList');
+  if (!items.length){list.innerHTML=`<div class="no-result"><span class="ornament">🕊️</span>${lang==='fr'?'Aucun résultat':'No results'}</div>`;return;}
+  list.innerHTML=items.map(d=>{
+    const initials=d.name.split(/[\s-]/)[0][0]+(d.name.split(/[\s-]/)[1]?d.name.split(/[\s-]/)[1][0]:'');
+    return `<div class="laureate-card" onclick="openDetail(${d.y})">
+      <div class="card-photo-wrap" id="cpw${d.y}">
+        <img id="cpi${d.y}" alt="">
+        <div class="card-photo-initials" id="cpini${d.y}">${initials.toUpperCase()}</div>
+      </div>
+      <div class="card-info">
+        <p class="card-name">${d.name}</p>
+        <p class="card-country">${d.flag} ${d.country}</p>
+        <p class="card-reason">${d[`reason_${lang}`]}</p>
+      </div>
+      <span class="card-arrow">›</span>
+    </div>`;
+  }).join('');
+
+  // Charger photos avec léger délai (évite surcharge réseau)
+  items.forEach((d, i) => {
+    const imgEl = document.getElementById('cpi'+d.y);
+    const iniEl = document.getElementById('cpini'+d.y);
+    if (!imgEl) return;
+    imgEl.addEventListener('load',  () => { imgEl.classList.add('loaded'); if(iniEl) iniEl.style.display='none'; }, { once: true });
+    imgEl.addEventListener('error', () => { imgEl.classList.remove('loaded'); }, { once: true });
+    setTimeout(() => loadWikiPhoto(getWikiTitle(d), imgEl, lang==='fr'&&d.wiki_fr?'fr':'en', d.img_url||null), i * 60);
+  });
+}
+
+// ── DETAIL ──
+function openDetail(year) {
+  const d=DATA.find(x=>x.y===year);
+  if(!d) return;
+  const initials=d.name.split(/[\s-]/)[0][0]+(d.name.split(/[\s-]/)[1]?d.name.split(/[\s-]/)[1][0]:'');
+  document.getElementById('detailHeaderYear').textContent=`🏅 ${d.y}`;
+  document.getElementById('detailBody').innerHTML=`
+    <div class="detail-photo-banner">
+      <div class="detail-photo-fallback" id="dfall${d.y}">🕊️</div>
+      <img id="dpi${d.y}" alt="${d.name}">
+    </div>
+    <div class="detail-content">
+      <div class="detail-year-badge">${d.flag} ${d.y}</div>
+      <h2 class="detail-name">${d.name}</h2>
+      <p class="detail-country">${d.country}</p>
+      <div class="detail-divider"></div>
+      <p class="detail-section-title">${lang==='fr'?'Motif du prix':'Prize rationale'}</p>
+      <p class="detail-reason">"${d[`reason_${lang}`]}"</p>
+      <div class="detail-divider"></div>
+      <p class="detail-section-title">${lang==='fr'?'Biographie':'Biography'}</p>
+      <p class="detail-bio">${d[`bio_${lang}`]}</p>
+      <div class="detail-tags">${d.tags.map(t=>`<span class="tag">${t}</span>`).join('')}</div>
+    </div>`;
+  // Photo grande — applyPhoto gère onload/onerror, on cache le fallback via CSS
+  const dpImg=document.getElementById('dpi'+d.y);
+  const dpFall=document.getElementById('dfall'+d.y);
+  if (dpImg && dpFall) {
+    const origOnload = dpImg.onload;
+    dpImg.addEventListener('load', () => { dpFall.style.display='none'; }, { once: true });
+  }
+  loadWikiPhoto(getWikiTitle(d), dpImg, lang==='fr'&&d.wiki_fr?'fr':'en', d.img_url||null);
+  document.getElementById('detailPanel').classList.add('open');
+}
+function closeDetail() { document.getElementById('detailPanel').classList.remove('open'); }
+
+// ── QUIZ ──
+const QUIZ_QUESTIONS=[
+  {q_fr:"Qui est la première femme à avoir reçu le Prix Nobel de la Paix ?",q_en:"Who was the first woman to receive the Nobel Peace Prize?",a:"Bertha von Suttner",opts:["Marie Curie","Jane Addams","Bertha von Suttner","Mère Teresa"],wiki:"Bertha von Suttner",wlang:"fr",fact_fr:"Bertha von Suttner (1905) avait influencé Alfred Nobel lui-même dans la création de ce prix.",fact_en:"Bertha von Suttner (1905) had influenced Alfred Nobel himself in creating this prize."},
+  {q_fr:"En quelle année Martin Luther King Jr. a-t-il reçu le Nobel de la Paix ?",q_en:"In which year did Martin Luther King Jr. receive the Nobel Peace Prize?",a:"1964",opts:["1960","1962","1964","1968"],wiki:"Martin Luther King",wlang:"fr",fact_fr:"MLK a reçu le prix en 1964 pour sa lutte non-violente pour l'égalité civique.",fact_en:"MLK received the prize in 1964 for his non-violent struggle for civil rights."},
+  {q_fr:"Quelle organisation a reçu le Nobel de la Paix en 2020 ?",q_en:"Which organisation received the Nobel Peace Prize in 2020?",a:"Programme alimentaire mondial",opts:["UNICEF","Programme alimentaire mondial","Médecins Sans Frontières","Croix-Rouge"],wiki:"Programme alimentaire mondial",wlang:"fr",fact_fr:"Le PAM a reçu le prix en 2020 pour ses efforts pour combattre la faim dans les zones de conflit.",fact_en:"WFP received the prize in 2020 for efforts to combat hunger in conflict zones."},
+  {q_fr:"Nelson Mandela a partagé le Nobel en 1993 avec :",q_en:"Nelson Mandela shared the 1993 Nobel Prize with:",a:"F.W. de Klerk",opts:["Desmond Tutu","F.W. de Klerk","Albert Lutuli","Kofi Annan"],wiki:"Nelson Mandela",wlang:"fr",fact_fr:"Prix attribué en 1993 pour leur travail pour la fin pacifique de l'apartheid.",fact_en:"The prize was awarded in 1993 for their work to peacefully end apartheid."},
+  {q_fr:"Qui a fondé la Croix-Rouge et reçu le premier Nobel en 1901 ?",q_en:"Who founded the Red Cross and shared the first Nobel Prize in 1901?",a:"Henry Dunant",opts:["Frédéric Passy","Élie Ducommun","Henry Dunant","Gustave Moynier"],wiki:"Henry Dunant",wlang:"fr",fact_fr:"Henry Dunant a fondé la Croix-Rouge après la bataille de Solférino en 1859.",fact_en:"Henry Dunant founded the Red Cross after the Battle of Solferino in 1859."},
+  {q_fr:"Barack Obama a reçu le Nobel de la Paix en :",q_en:"Barack Obama received the Nobel Peace Prize in:",a:"2009",opts:["2008","2009","2010","2012"],wiki:"Barack Obama",wlang:"fr",fact_fr:"Prix attribué peu après son élection pour ses efforts de diplomatie internationale.",fact_en:"Prize awarded shortly after his election for efforts in international diplomacy."},
+  {q_fr:"Malala Yousafzai a partagé le prix en 2014 avec :",q_en:"Malala Yousafzai shared the 2014 prize with:",a:"Kailash Satyarthi",opts:["Denis Mukwege","Kailash Satyarthi","Abiy Ahmed","Liu Xiaobo"],wiki:"Malala Yousafzai",wlang:"fr",fact_fr:"Kailash Satyarthi milite depuis des décennies contre le travail forcé des enfants en Inde.",fact_en:"Kailash Satyarthi has campaigned for decades against child labour in India."},
+  {q_fr:"Le GIEC a partagé le Nobel 2007 avec quel Américain ?",q_en:"The IPCC shared the 2007 Nobel with which American?",a:"Al Gore",opts:["Bill Clinton","John Kerry","Al Gore","Barack Obama"],wiki:"Al Gore",wlang:"fr",fact_fr:"Al Gore et le GIEC ont reçu le prix en 2007 pour leur action sur le climat.",fact_en:"Al Gore and the IPCC jointly received the prize in 2007 for climate action."},
+  {q_fr:"Wangari Maathai (2004) était originaire de quel pays ?",q_en:"Wangari Maathai (2004) was from which country?",a:"Kenya",opts:["Éthiopie","Kenya","Tanzanie","Afrique du Sud"],wiki:"Wangari Maathai",wlang:"fr",fact_fr:"Wangari Maathai était fondatrice du Mouvement de la Ceinture verte au Kenya.",fact_en:"Wangari Maathai was the founder of the Green Belt Movement in Kenya."},
+  {q_fr:"Mère Teresa a reçu le Nobel de la Paix en :",q_en:"Mother Teresa received the Nobel Peace Prize in:",a:"1979",opts:["1975","1977","1979","1982"],wiki:"Mère Teresa",wlang:"fr",fact_fr:"Mère Teresa a reçu le prix en 1979 pour son travail auprès des pauvres en Inde.",fact_en:"Mother Teresa received the prize in 1979 for her work with the poor in India."},
+  {q_fr:"Mikhaïl Gorbatchev a reçu le Nobel pour son rôle dans :",q_en:"Mikhail Gorbachev received the Nobel for his role in:",a:"La fin de la Guerre froide",opts:["La réunification allemande","La fin de la Guerre froide","Les accords START","L'indépendance des pays baltes"],wiki:"Mikhaïl Gorbatchev",wlang:"fr",fact_fr:"Gorbatchev a reçu le prix en 1990 pour son rôle dans la fin de la Guerre froide.",fact_en:"Gorbachev received the prize in 1990 for his role in ending the Cold War."},
+  {q_fr:"Quel journaliste philippin a reçu le Nobel de la Paix en 2021 ?",q_en:"Which Filipino journalist received the Nobel Peace Prize in 2021?",a:"Maria Ressa",opts:["Rappler","Maria Ressa","Cecilia Ticzon","Pia Wurtzbach"],wiki:"Maria Ressa",wlang:"fr",fact_fr:"Maria Ressa a partagé le prix 2021 avec le Russe Dmitry Muratov.",fact_en:"Maria Ressa shared the 2021 prize with Russian journalist Dmitry Muratov."},
+  {q_fr:"Lech Wałęsa a fondé quel syndicat en Pologne ?",q_en:"Lech Wałęsa founded which union in Poland?",a:"Solidarność",opts:["Solidarność","Varsovie Libre","OPZZ","Liga Pologne"],wiki:"Lech Wałęsa",wlang:"fr",fact_fr:"Solidarność était le premier syndicat libre d'Europe de l'Est.",fact_en:"Solidarność was Eastern Europe's first free trade union."},
+  {q_fr:"L'Union européenne a reçu le Nobel de la Paix en :",q_en:"The European Union received the Nobel Peace Prize in:",a:"2012",opts:["2008","2010","2012","2015"],wiki:"Union européenne",wlang:"fr",fact_fr:"L'UE a reçu le prix en 2012 pour plus de 60 ans de paix en Europe.",fact_en:"The EU received the prize in 2012 for over 60 years of peace in Europe."},
+  {q_fr:"Liu Xiaobo était emprisonné dans quel pays lors du Nobel ?",q_en:"Liu Xiaobo was imprisoned in which country when awarded the Nobel?",a:"Chine",opts:["Corée du Nord","Chine","Vietnam","Cambodge"],wiki:"Liu Xiaobo",wlang:"fr",fact_fr:"Liu Xiaobo était emprisonné en Chine au moment de la remise du Nobel en 2010.",fact_en:"Liu Xiaobo was imprisoned in China when the Nobel was awarded in 2010."},
+  {q_fr:"Dag Hammarskjöld est le seul Nobel attribué à titre :",q_en:"Dag Hammarskjöld is the only Nobel awarded:",a:"Posthume",opts:["Collectif","Posthume","Honorifique","Conjoint"],wiki:"Dag Hammarskjöld",wlang:"fr",fact_fr:"Dag Hammarskjöld est décédé dans un accident d'avion en 1961, avant la cérémonie.",fact_en:"Dag Hammarskjöld died in a plane crash in 1961, before the ceremony."},
+  {q_fr:"Amnesty International a reçu le Nobel de la Paix en :",q_en:"Amnesty International received the Nobel Peace Prize in:",a:"1977",opts:["1971","1973","1977","1981"],wiki:"Amnesty International",wlang:"fr",fact_fr:"Amnesty International, fondée en 1961, a reçu le prix en 1977.",fact_en:"Amnesty International, founded in 1961, received the prize in 1977."},
+  {q_fr:"Norman Borlaug a reçu le Nobel pour son travail sur :",q_en:"Norman Borlaug received the Nobel for his work on:",a:"La révolution verte",opts:["La lutte contre la malaria","La révolution verte","L'aide alimentaire","Les OGM"],wiki:"Norman Borlaug",wlang:"en",fact_fr:"Borlaug a développé des variétés de blé à haut rendement, déclenchant la Révolution verte.",fact_en:"Borlaug developed high-yield wheat varieties, triggering the Green Revolution."},
+  {q_fr:"Narges Mohammadi (2023) milite pour les droits des femmes dans quel pays ?",q_en:"Narges Mohammadi (2023) fights for women's rights in which country?",a:"Iran",opts:["Irak","Afghanistan","Iran","Arabie Saoudite"],wiki:"Narges Mohammadi",wlang:"fr",fact_fr:"Narges Mohammadi a été emprisonnée à plusieurs reprises pour son activisme en Iran.",fact_en:"Narges Mohammadi has been imprisoned multiple times for her activism in Iran."},
+  {q_fr:"Willy Brandt (1971) est célèbre pour quelle politique étrangère ?",q_en:"Willy Brandt (1971) is famous for which foreign policy?",a:"L'Ostpolitik",opts:["L'Ostpolitik","La détente","Le Plan Marshall","L'OTAN"],wiki:"Willy Brandt",wlang:"fr",fact_fr:"L'Ostpolitik de Brandt cherchait à normaliser les relations avec l'Europe de l'Est.",fact_en:"Brandt's Ostpolitik sought to normalise relations with Eastern Europe."},
+];
+
+function startQuiz() {
+  shuffledQuiz=[...QUIZ_QUESTIONS].sort(()=>Math.random()-0.5);
+  quizQuestions=shuffledQuiz.slice(0,15);
+  quizState={q:0,score:0,answered:false,total:quizQuestions.length};
+  renderQuiz();
+}
+
+function renderQuiz() {
+  if(!quizQuestions.length){startQuiz();return;}
+  const c=document.getElementById('quizContainer');
+  const qs=quizState;
+  if(qs.q>=qs.total){
+    const pct=Math.round(qs.score/qs.total*100);
+    const medal=pct>=80?'🏅':pct>=50?'🕊️':'📜';
+    c.innerHTML=`<div class="quiz-score-bar"><div><div class="score-label">${lang==='fr'?'Score final':'Final score'}</div></div><div class="score-value">${qs.score}/${qs.total}</div></div>
+    <div class="quiz-card" style="text-align:center;padding:30px 16px">
+      <div style="font-size:48px;margin-bottom:12px">${medal}</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--gold);margin-bottom:8px">${pct}%</div>
+      <div style="font-size:15px;color:var(--text-dim);margin-bottom:20px">${pct>=80?(lang==='fr'?'Excellent ! Vous êtes un expert.':'Excellent! You are an expert.'):pct>=50?(lang==='fr'?'Bien joué !':'Well done!'):lang==='fr'?'Continuez à apprendre.':'Keep learning.'}</div>
+      <button class="quiz-next-btn show" onclick="startQuiz()">${lang==='fr'?'Recommencer le quiz':'Restart quiz'}</button>
+    </div>`;
+    return;
+  }
+  const q=quizQuestions[qs.q];
+  const opts=[...q.opts].sort(()=>Math.random()-0.5);
+  const safe=(s)=>s.replace(/'/g,"\\'");
+  c.innerHTML=`<div class="quiz-score-bar"><div><div class="score-label">${lang==='fr'?'Question':'Question'} ${qs.q+1}/${qs.total}</div></div><div class="score-value">${qs.score} pts</div></div>
+  <div class="quiz-card">
+    <p class="quiz-q-num">QUESTION ${qs.q+1}</p>
+    <div class="quiz-photo-wrap">
+      <div class="quiz-photo-initials" id="qini">${q.wiki[0].toUpperCase()}</div>
+      <img id="qphoto" alt="">
+    </div>
+    <p class="quiz-question">${q[`q_${lang}`]}</p>
+    <div class="quiz-options">${opts.map(o=>`<button class="quiz-option" onclick="answerQuiz('${safe(o)}','${safe(q.a)}')">${o}</button>`).join('')}</div>
+    <div class="quiz-feedback" id="quizFeedback"></div>
+    <button class="quiz-next-btn" id="quizNextBtn" onclick="nextQuestion()">${lang==='fr'?'Question suivante →':'Next question →'}</button>
+  </div>`;
+  // Photo quiz
+  const qImg=document.getElementById('qphoto');
+  const qIni=document.getElementById('qini');
+  qImg.addEventListener('load', ()=>{ qImg.classList.add('loaded'); if(qIni) qIni.style.display='none'; }, { once:true });
+  loadWikiPhoto(q.wiki, qImg, q.wlang);
+}
+
+function answerQuiz(chosen,correct) {
+  if(quizState.answered) return;
+  quizState.answered=true;
+  document.querySelectorAll('.quiz-option').forEach(btn=>{
+    if(btn.textContent.trim()===correct) btn.classList.add('correct');
+    else if(btn.textContent.trim()===chosen) btn.classList.add('wrong');
+    btn.style.pointerEvents='none';
+  });
+  const isOk=chosen===correct;
+  if(isOk) quizState.score++;
+  const q=quizQuestions[quizState.q];
+  const fb=document.getElementById('quizFeedback');
+  fb.classList.add('show',isOk?'correct-fb':'wrong-fb');
+  fb.innerHTML=`${isOk?'✅':'❌'} ${q[`fact_${lang}`]}`;
+  document.getElementById('quizNextBtn').classList.add('show');
+}
+
+function nextQuestion() { quizState.q++; quizState.answered=false; renderQuiz(); }
+
+// ── STATS ──
+function renderStats() {
+  const c=document.getElementById('statsContainer');
+  const cc={};
+  DATA.forEach(d=>{
+    d.country.split(' / ').forEach(p=>{
+      const k=p.trim().replace(/\s*\(.*\)/,'');
+      if(k!=='International') cc[k]=(cc[k]||0)+1;
+    });
+  });
+  const top=Object.entries(cc).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxV=top[0][1];
+  const tc={};
+  DATA.forEach(d=>d.tags.forEach(t=>{tc[t]=(tc[t]||0)+1;}));
+  const topT=Object.entries(tc).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const orgs=DATA.filter(d=>d.type==='org').length;
+  c.innerHTML=`
+    <div class="stat-card">
+      <p class="stat-card-title">🌍 ${lang==='fr'?'Chiffres clés':'Key figures'}</p>
+      <div class="stat-row"><span class="label">${lang==='fr'?'Entrées dans cette app':'Entries in this app'}</span><span class="value">${DATA.length}</span></div>
+      <div class="stat-row"><span class="label">${lang==='fr'?'Individus':'Individuals'}</span><span class="value">${DATA.length-orgs}</span></div>
+      <div class="stat-row"><span class="label">${lang==='fr'?'Organisations':'Organisations'}</span><span class="value">${orgs}</span></div>
+      <div class="stat-row"><span class="label">${lang==='fr'?'Premier prix':'First prize'}</span><span class="value">1901</span></div>
+      <div class="stat-row"><span class="label">${lang==='fr'?'Dernier prix inclus':'Latest prize included'}</span><span class="value">2024</span></div>
+    </div>
+    <div class="stat-card">
+      <p class="stat-card-title">🏆 ${lang==='fr'?'Pays les plus récompensés':'Most awarded countries'}</p>
+      ${top.map(([c2,n])=>`<div class="stat-bar-row"><span class="stat-bar-label">${c2}</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(n/maxV*100)}%"></div></div><span class="stat-bar-val">${n}</span></div>`).join('')}
+    </div>
+    <div class="stat-card">
+      <p class="stat-card-title">🏷️ ${lang==='fr'?'Thèmes fréquents':'Frequent themes'}</p>
+      ${topT.map(([t,n])=>`<div class="stat-bar-row"><span class="stat-bar-label">${t}</span><div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(n/topT[0][1]*100)}%"></div></div><span class="stat-bar-val">${n}</span></div>`).join('')}
+    </div>
+    <div class="stat-card">
+      <p class="stat-card-title">⭐ ${lang==='fr'?'Records & Anecdotes':'Records & Trivia'}</p>
+      <div class="stat-row"><span class="label">${lang==='fr'?'Seul prix posthume':'Only posthumous prize'}</span><span class="value">Dag Hammarskjöld</span></div>
+      <div class="stat-row"><span class="label">${lang==='fr'?'Plus jeune laureate':'Youngest laureate'}</span><span class="value">Malala (17 ans)</span></div>
+      <div class="stat-row"><span class="label">${lang==='fr'?'2 Nobel non partagés':'2 unshared Nobels'}</span><span class="value">Linus Pauling</span></div>
+      <div class="stat-row"><span class="label">${lang==='fr'?'CICR (3 fois lauréat)':'ICRC (3-time laureate)'}</span><span class="value">1917, 1944, 1963</span></div>
+      <div class="stat-row"><span class="label">${lang==='fr'?'Prix refusé':'Prize declined'}</span><span class="value">Lê Đức Thọ (1973)</span></div>
+    </div>`;
+}
+
+
+// ── APPS ─────────────────────────────────────────────────────────────────
+const MY_APPS = [
+  // Jeux & Utilitaires
+  { name:'Bataille Navale',   id:'6762091681', cat:'Jeu', emoji:'⚓' },
+  { name:'Dames Checkers',    id:'6762076518', cat:'Jeu', emoji:'🔴' },
+  { name:'Toi ou Moi',        id:'1475884625', cat:'Jeu', emoji:'🎲' },
+  { name:'Belote Calc',       id:'1483084001', cat:'Utilitaire', emoji:'🃏' },
+  { name:'Tarots Calc',       id:'1481989301', cat:'Utilitaire', emoji:'🔮' },
+  // Histoire & Culture FR
+  { name:'Rois de France',    id:'6761322546', cat:'Histoire', emoji:'👑' },
+  { name:'Présidents Français',id:'6761324444',cat:'Histoire', emoji:'🇫🇷' },
+  { name:'Maréchaux Napoléon',id:'6761374601', cat:'Histoire', emoji:'⚔️' },
+  { name:'Basilique Saint-Denis',id:'6761709149',cat:'Histoire', emoji:'⛪' },
+  { name:'Panthéon Paris',    id:'6761335268', cat:'Histoire', emoji:'🏛️' },
+  { name:'Familles Royales',  id:'6762098486', cat:'Histoire', emoji:'👸' },
+  { name:'Académie française',id:'6761334922', cat:'Culture', emoji:'📖' },
+  { name:'Comédie Française', id:'6761993002', cat:'Culture', emoji:'🎭' },
+  { name:'Institut de France',id:'6761769529', cat:'Culture', emoji:'🏫' },
+  { name:'Compositeurs',      id:'6761656628', cat:'Culture', emoji:'🎼' },
+  // Géographie & Villes
+  { name:"Capitales d'Europe",id:'6761421276',cat:'Géographie', emoji:'🌍' },
+  { name:'Pays UE',           id:'6762346365', cat:'Géographie', emoji:'🇪🇺' },
+  { name:'Leaders Européens', id:'6762263227', cat:'Géographie', emoji:'🤝' },
+  { name:'Etats Unis',        id:'6762370541', cat:'Géographie', emoji:'🗽' },
+  { name:'Présidents Américains',id:'6762256169',cat:'Géographie', emoji:'🦅' },
+  // Paris & Patrimoine
+  { name:'Musées Paris',      id:'6760890465', cat:'Paris', emoji:'🖼️' },
+  { name:'Théâtres Paris',    id:'6760929391', cat:'Paris', emoji:'🎬' },
+  { name:'Scènes Paris',      id:'6761293938', cat:'Paris', emoji:'🎪' },
+  { name:'Cimetières Paris',  id:'6760751055', cat:'Paris', emoji:'🕊️' },
+  { name:'Sénat Paris',       id:'6761363063', cat:'Paris', emoji:'🏛️' },
+  { name:'Assemblée Paris',   id:'6761361079', cat:'Paris', emoji:'🗳️' },
+  // Nature & Vie
+  { name:'Arbres de France',  id:'6761685637', cat:'Nature', emoji:'🌳' },
+  // Apps perso
+  { name:'Frigo Manager',     id:'6759219383', cat:'Utilitaire', emoji:'🥗' },
+  { name:'Cave Manager',      id:'6760126279', cat:'Utilitaire', emoji:'🍷' },
+  { name:'MesRestaurants',    id:'6760617965', cat:'Utilitaire', emoji:'🍽️' },
+  { name:'MediSafe-Pharmacie',id:'6761271324', cat:'Santé', emoji:'💊' },
+];
+
+let appsRendered = false;
+
+function renderApps() {
+  if (appsRendered) return;
+  appsRendered = true;
+  const c = document.getElementById('appsContainer');
+
+  // Grouper par catégorie
+  const groups = {};
+  MY_APPS.forEach(a => {
+    if (!groups[a.cat]) groups[a.cat] = [];
+    groups[a.cat].push(a);
+  });
+
+  let html = '';
+  Object.entries(groups).forEach(([cat, apps]) => {
+    html += `<p class="apps-section-title">${cat}</p>`;
+    apps.forEach(a => {
+      html += `<a class="app-row" onclick="openApp('${a.id}')">
+        <div class="app-icon-wrap" id="aiwrap_${a.id}">
+          <span class="app-icon-placeholder" id="aiph_${a.id}">${a.emoji}</span>
+          <img id="aiimg_${a.id}" alt="${a.name}">
+        </div>
+        <div class="app-info">
+          <p class="app-name">${a.name}</p>
+          <p class="app-cat">${a.cat}</p>
+        </div>
+        <span class="app-arrow">›</span>
+      </a>`;
+    });
+  });
+  c.innerHTML = html;
+
+  // Charger icônes via JSONP iTunes (même pattern que panneau Settings)
+  MY_APPS.forEach((a, i) => {
+    setTimeout(() => loadAppIcon(a.id), i * 80);
+  });
+}
+
+function loadAppIcon(numId) {
+  const cb = 'itcb' + numId;
+  window[cb] = function(data) {
+    if (data.results && data.results[0]) {
+      const url = data.results[0].artworkUrl60;
+      const img = document.getElementById('aiimg_' + numId);
+      const ph  = document.getElementById('aiph_'  + numId);
+      if (img) {
+        img.onload = () => { img.classList.add('loaded'); if(ph) ph.style.display='none'; };
+        img.src = url;
+        if (img.complete && img.naturalWidth > 0) { img.classList.add('loaded'); if(ph) ph.style.display='none'; }
+      }
+    }
+    delete window[cb];
+  };
+  const s = document.createElement('script');
+  s.src = 'https://itunes.apple.com/lookup?id=' + numId + '&callback=' + cb;
+  document.body.appendChild(s);
+}
+
+function openApp(id) {
+  window.open('https://apps.apple.com/app/id' + id, '_system');
+}
+
+// ── INIT ──
+buildDecadeFilter();
+filterList();
+startQuiz();
+</script>
+</body>
+</html>
